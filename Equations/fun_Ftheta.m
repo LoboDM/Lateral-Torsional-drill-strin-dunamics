@@ -21,5 +21,5 @@ function Ftheta = fun_Ftheta(vphi,r,vtheta,u,Fn,R)
 
 
 % Friction force
-Ftheta = tanh((vphi*R+r*vtheta)*1e8)*u*Fn;      
+Ftheta = tanh((vphi*R+r*vtheta)*1e4)*u*Fn;      
 end

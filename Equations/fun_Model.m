@@ -78,7 +78,7 @@ for i = lLc:-1:1
     tol(i)     = (Dbwall -Dco(i))/2;        
     
     % Eccentricity
-    e(i)       = Dpo/10;                    
+    e(i)       = Dpo/100;                    
     
     if k(i) < 0
         % Buckling checkage
