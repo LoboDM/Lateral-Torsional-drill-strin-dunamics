@@ -78,7 +78,7 @@ for i = lLc:-1:1
     tol(i)     = (Dbwall -Dco(i))/2;        
     
     % Eccentricity
-    e(i)       = Dpo/100;                    
+    e(i)       = Dpo/10;                    
     
     if k(i) < 0
         % Buckling checkage
@@ -152,8 +152,8 @@ tspan = [ti tf];            % Time information
     tspan,tolerance);
 
 % Save values
-phi  = X(1,:);
-vphi = X(2,:);
+phi  = X(length(Im),:);
+vphi = X(length(Im)*2,:);
 lumped_parameter = length(LATERAL_dofs);
 [lin,col] = size(phi);
 
