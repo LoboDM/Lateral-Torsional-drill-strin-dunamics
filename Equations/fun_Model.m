@@ -1,6 +1,6 @@
 function fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
                 Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,WOBf,...
-                local,LATERAL_dofs,N_tor)
+                local,LATERAL_dofs,N_tor,i_print)
 % fun_Model   Generates the analysis and simulation of a lateral-torsional
 %             lumped parameter model of a drill-string considering the
 %             axial force in stiffness matrices.  
@@ -118,14 +118,14 @@ IBHA = rho*JBHA.*LBHAv;  % drill collars moment of inertia
 kBHA = G*JBHA./LBHAv;   % drill collars stiffness
 
 % Generates the stiffness matrix -> K
-[kt,k1] = K_Gen(NgdlTotDP,0,kDP,kBHA);
+[kt,k1] = K_Gen(NgdlTotDP,0,kDP,kBHA,i_print);
 
 % Generates the inertia matrix -> I
-Im = I_Gen(NgdlTotDP,0,IDP,IBHA,0);
+Im = I_Gen(NgdlTotDP,0,IDP,IBHA,0,i_print);
 invIm = inv(Im); 
 
 % Generates the damping matrix -> C
-[ct,c1] = C_Gen(Im,kt,a_c,b_c,k1);
+[ct,c1] = C_Gen(Im,kt,a_c,b_c,k1,i_print);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Initial conditions %%%%%%%%%%%%%%%%%%%%%%%%%%
 LATERAL_dofs = sort(LATERAL_dofs);

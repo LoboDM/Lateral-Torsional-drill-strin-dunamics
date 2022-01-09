@@ -1,4 +1,4 @@
-function [C,c1] = C_Gen(I,K,alfa,beta,k1)
+function [C,c1] = C_Gen(I,K,alfa,beta,k1,i_print)
 
 % C_Gen Generates the damping matrix and the damping of the first pipe
 %       segment for a torsional lumped parameter model of a drill-string
@@ -20,6 +20,7 @@ function [C,c1] = C_Gen(I,K,alfa,beta,k1)
 %   alfa        -> Damping constant proportional to inertia
 %   beta        -> Damping constant proportional to stiffness
 %   k1          -> Stiffness of the first pipe segment
+%   i_print     -> If True, print usefull information
 %
 %   Outputs:
 %   C           -> Damping matrix
@@ -48,17 +49,21 @@ function [C,c1] = C_Gen(I,K,alfa,beta,k1)
 %   CREATED BY LAVI (COPPE-UFRJ) FOR PETROBRAS
 
 
-[Autovetores,Autovalores] = eig(K,I);
+[Eigen_vec,Eigen_val] = eig(K,I);
 if length(I) == 1
     C = alfa*I + beta*K;
-    Xi = 0.5 * Autovetores' * C * Autovetores * (sqrt(Autovalores))^(-1);
+    Xi = 0.5 * Eigen_vec' * C * Eigen_vec * (sqrt(Eigen_val))^(-1);
     c1 = C;
 else
     C = alfa*I + beta*K;
-    Xi = 0.5 * Autovetores' * C * Autovetores * (sqrt(Autovalores))^(-1);
+    Xi = 0.5 * Eigen_vec' * C * Eigen_vec * (sqrt(Eigen_val))^(-1);
     c1 = beta*k1;
 end
-disp('Damping Matrix'),disp(C)
-disp('Damping coefficients'),disp(diag(Xi))
-disp('Natural frequencies (Hz):'),disp(sqrt(diag(Autovalores))/2/pi)
+
+if i_print
+    disp('Torsional damping Matrix'),disp(C)
+    disp('Torsional damping coefficients'),disp(diag(Xi))
+    disp('Torsional natural frequencies (Hz):'),disp(sqrt(...
+                                                     diag(Eigen_val))/2/pi)
+end
 end

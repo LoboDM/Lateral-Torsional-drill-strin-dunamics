@@ -162,7 +162,7 @@ WOB      = WOB*1000;
 if Analysis == 1
     fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
               Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
-              WOB,local,LATERAL_dofs,N_tor);
+              WOB,local,LATERAL_dofs,N_tor,false);
     file = strcat(local,'\WOB =',num2str(round(WOB)),'rpm =',...
         num2str(rpm,'%03.f'));
     load(file)
@@ -194,7 +194,7 @@ elseif Analysis == 2
         for j = 1:length(WOBrange)
             fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
                 Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpmrange(i),...
-                WOBrange(j),local);
+                WOBrange(j),local,LATERAL_dofs,N_tor,false);
         end
     end
     Regimen_Maps(local,WOBrange,rpmrange,bha_region)

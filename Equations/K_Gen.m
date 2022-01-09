@@ -1,4 +1,4 @@
-function [K,k1] = K_Gen(NgdlTotDP,NgdlTotBHA,kDP,kBHA)
+function [K,k1] = K_Gen(NgdlTotDP,NgdlTotBHA,kDP,kBHA,i_print)
 
 % K_Gen Generates the stiffness matrix and the Stiffness of the first pipe
 %       segment for a torsional lumped parameter model of a drill-string
@@ -15,6 +15,7 @@ function [K,k1] = K_Gen(NgdlTotDP,NgdlTotBHA,kDP,kBHA)
 %                  If NgdlTotBHA == 0, BHA is a rigid body
 %   kDP         -> Drill pipes stiffness
 %   kBHA        -> Drill collars stiffness
+%   i_print     -> If True, print usefull information
 %
 %   Outputs:
 %   K           -> Stiffness matrix
@@ -60,5 +61,7 @@ end
 
 k1 = kvector(1);
 
-disp('Stiffness matrix'), disp(K)
+if i_print
+    disp('Torsional stiffness matrix'), disp(K)
+end
 end

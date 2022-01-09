@@ -1,4 +1,4 @@
-function I = I_Gen(NgdlTotDP,NgdlTotBHA,IDP,IBHA,IBIT)
+function I = I_Gen(NgdlTotDP,NgdlTotBHA,IDP,IBHA,IBIT,i_print)
 
 % I_Gen Generates the inertia tensor for a torsional lumped parameter
 %       model of a drill-string considering the BHA as a rigid or flexible
@@ -17,6 +17,7 @@ function I = I_Gen(NgdlTotDP,NgdlTotBHA,IDP,IBHA,IBIT)
 %   IDP         -> Drill pipes moment of inetia
 %   IBHA        -> Drill collars moment of inertia 
 %   IBIT        -> Bit bounce moment of inertia
+%   i_print     -> If True, print usefull information
 %
 %   Outputs:
 %   I           -> Inertia matrix 
@@ -62,5 +63,7 @@ else %NgdlTotBHA > 0       %(Flexible BHA)
     I(Ngdl,Ngdl) = 1/2*Ivector(Ngdl,1) + IBIT;
 end
 
-disp('Inertia matrix'), disp(I)
+if i_print
+    disp('Torsional inertia matrix'), disp(I)
+end
 end
