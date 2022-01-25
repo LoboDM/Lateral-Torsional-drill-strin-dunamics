@@ -25,6 +25,6 @@ function Tbit = fun_Tbit(vphi,WOB)
 %     b3 = 5.47;
 %     Xt = 0.0239
 
-Tbit =  WOB*0.0239*(tanh(1.91*vphi) + 8.5*vphi/(1+5.47*vphi^2));
+Tbit =  WOB*0.0239*(tanh(1.91*vphi) + 8.5*vphi./(1+5.47*vphi.^2));
        
 end

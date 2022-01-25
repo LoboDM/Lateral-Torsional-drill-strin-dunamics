@@ -123,7 +123,7 @@ b_c = 0.06;     % Damping constant proportional to stiffness
 ti = 0;
 
 % Final time
-tf = 30;
+tf = 50;
 
 % Maximum step/Saving step
 dt = 1e-2;
@@ -135,7 +135,7 @@ tolerance = 1e-4;%0.5e-3;
 WOBrange   = 220:-10:190;       % in kN
 rpmrange   = 120:10:140;        % in rpm
 WOB        = 200;
-rpm        = 130;
+rpm        = 90;
 
 % Map properties
 bha_region = 1;
@@ -162,10 +162,12 @@ WOB      = WOB*1000;
 if Analysis == 1
     fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
               Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
-              WOB,local,LATERAL_dofs,N_tor,false);
+              WOB,local,LATERAL_dofs,N_tor,true);
     file = strcat(local,'\WOB =',num2str(round(WOB)),'rpm =',...
         num2str(rpm,'%03.f'));
     load(file)
+    
+    % Plot 1 - radial disp, torsional and whirl speeds vs time 
     figure(1)
     subplot(3,1,1)
     plot(t,r(bha_region,:))
@@ -182,6 +184,7 @@ if Analysis == 1
     xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
     ylabel('$\dot{\theta}$ (rad/s)','Interpreter','latex','FontSize',16)
     
+    % Plot 2 - Phase diagram
     x = r(bha_region,t>20).*cos(theta(bha_region,t>20));
     y = r(bha_region,t>20).*sin(theta(bha_region,t>20));   
     figure(2)
@@ -189,6 +192,36 @@ if Analysis == 1
     xlabel('X','Interpreter','latex','FontSize',16)
     ylabel('Y','Interpreter','latex','FontSize',16)
     
+    % Plot 3 - Lateral natural frequency vs time
+    i_dof = LATERAL_dofs(bha_region);
+    figure(3)
+    plot(t,(WOB(i_dof)*pi^2/(2*Lc(i_dof)))*ones(length(t),1)), hold on
+    plot(t,fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2))
+    plot(t,(pi^4)*E*I_area(i_dof)./(2*Lc(i_dof).^3)*ones(length(t),1))
+    plot(t,k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2)), hold off
+    legend('WOB','TOB','No-load','Total')
+    temp = k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2);
+    disp('Lateral natural frequency'), disp(sqrt(temp(end)/Mt(i_dof))/2/pi)
+    
+    % Plot 4 - Natural shapes
+    [Eigen_vec,Eigen_val] = eig(kt,Im);
+    for ii = 1:length(Eigen_vec)
+        figure(100+ii)
+        plot([0; Eigen_vec(:,ii)]./max(Eigen_vec(:,ii)),-cumsum([0; LDPv]))
+        title(['Torsional Mode ' num2str(ii) ', Freq = ', ...
+                              num2str(Eigen_val(ii,ii)/2/pi,'%.2f') ' Hz'])
+        ylabel('Distance from top (m)')
+        ylabel('Normalized Magnitude')
+    end
+        
+    
+    % Plot 5 - Spectrogram
+    x = r(bha_region,:).*cos(theta(bha_region,:));
+    y = r(bha_region,:).*sin(theta(bha_region,:));   
+    figure(5)
+    spectrogram(x+y*sqrt(-1),128,120,128,1/(t(2)-t(1)),'centered','power','yaxis')
+
+    %%
 elseif Analysis == 2
     for i = 1:length(rpmrange)
         for j = 1:length(WOBrange)
