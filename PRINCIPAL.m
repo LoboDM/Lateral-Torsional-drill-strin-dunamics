@@ -78,10 +78,15 @@ clear all
 clc
 close all
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% ANALYSIS TYPE %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% GENERAL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 Analysis = 1;   % Analysis = 1 -> single simulation
                 % Analysis = 2 -> regimen map simulation
 
+plot_modes  = [1 2];% index of the normal modes you want to plot
+                    % IMPORTANT!! The lowest normal mode index corresponds 
+                    % to 1 and the highest cannot exceed the number of
+                    % degrees of freedom of the system.
+                    
 %%%%%%%%%%%%%%%%%%%% DRLL-STRING GEOMETRY AND PROPERTIES %%%%%%%%%%%%%%%%%%
 E      = 220*10^9;  % Modulus of elasticity
 G      = 85.3e+9;   % Shear coefficient
@@ -140,14 +145,15 @@ rpm        = 90;
 % Map properties
 bha_region = 1;
 
+%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%% SOLVING THE PROBLEM %%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 % save directory
 local = [pwd '\Results'];
 if ~exist(local, 'dir')
        mkdir(local)
 end
-%% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%% SOLVING THE PROBLEM %%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 lLc = length(Lc);
 Dbwall = Dbit;      % Borehole diameter is the same as bit
@@ -159,6 +165,7 @@ addpath(strcat(pwd,'\Plots'));
 % Treats WOB info to N
 WOBrange = WOBrange*1000;
 WOB      = WOB*1000;
+
 if Analysis == 1
     fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
               Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
@@ -220,6 +227,73 @@ if Analysis == 1
     y = r(bha_region,:).*sin(theta(bha_region,:));   
     figure(5)
     spectrogram(x+y*sqrt(-1),128,120,128,1/(t(2)-t(1)),'centered','power','yaxis')
+    
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MODAL ANALYSIS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+    % Calculate nat frequencies, associated eigenvectors and normal modes
+    [V,w,MN] = FreqNat_Gen(kt,Im,NgdlTotDP,0,1);
+
+    L = sum([Lp Lc]);
+    if NgdlTotDP == 1
+        Coord = [0;LDP;L];
+        Coord_inv = L*ones(length(Coord),1) - Coord;
+    else
+        Coord = zeros(NgdlTotDP+2,1);
+        for i = 1:NgdlTotDP
+            Coord(i+1) = Coord(i) + LDPv(i);
+        end
+        Coord(end) = L;
+        Coord_inv = L*ones(length(Coord),1) - Coord;
+    end
+    
+    for i = 1:length(plot_modes)
+        figure(100+i)
+        if NgdlTotDP > 1
+            a = [ 0 ; MN(:,plot_modes(i)); MN(end,plot_modes(i))];
+            plot(a,Coord_inv,'ks--')
+            ylabel('Distance from bit (m)','FontSize',20)
+            xlabel('Amplitude','FontSize',20)
+            xlim([ -2.0 2.0] )
+            ylim([ 0 5500 ])
+            set(gca,'fontsize',14)
+            title([num2str(NgdlTotDP) ' dofs, '...
+                num2str(plot_modes(i)) '^o mode: '...
+                num2str(w(plot_modes(i))) ' Hz'],'FontSize',16)
+            legend([num2str(plot_modes(i)) '^o mode: '...
+                num2str(w(plot_modes(i)))...
+                ' Hz'],'Location','northwest')
+%             if i_save == 1 || i_save == 3
+%                 saveas(gca,['temp/Rigid_BHA_' num2str(NgdlDP)...
+%                     'DP_Modo' num2str(plot_modes(i))],'epsc')
+%                 saveas(gca,['temp/Rigid_BHA_' num2str(NgdlDP)...
+%                     'DP_Modo' num2str(plot_modes(i))],'fig')
+%                 saveas(gca,['temp/Rigid_BHA_' num2str(NgdlDP)...
+%                     'DP_Modo' num2str(plot_modes(i))],'jpg')
+%             end
+        else
+            a = [ 0 ; MN; MN];
+            plot(a,Coord_inv,'ks--')
+            ylabel('Distance from bit (m)','FontSize',20)
+            xlabel('Amplitude','FontSize',20)
+            xlim([ -2.0 2.0] )
+            ylim([ 0 5500 ])
+            set(gca,'fontsize',14)
+            title([num2str(NgdlTotDP)...
+                ' dofs, ' num2str(1) '^o mode: ' num2str(w) ' Hz'],...
+                'FontSize',16)
+            legend([num2str(plot_modes(i)) '^o mode: '...
+                num2str(w) ' Hz'],'Location','northwest')
+%             if i_save == 1 || i_save == 3
+%                 saveas(gca,'temp/KEeq_Rigido','epsc')
+%                 saveas(gca,'temp/KEeq_Rigido','fig')
+%                 saveas(gca,'temp/KEeq_Rigido','jpg')
+%             end
+        end
+    
+    end
+        
+        
+    
+    
 
     %%
 elseif Analysis == 2
