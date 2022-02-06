@@ -1,4 +1,4 @@
 
 *.asv
-Results/WOB =200000rpm =130.mat
-Results/WOB =200000rpm =130.mat
+Results/
+*.mat
