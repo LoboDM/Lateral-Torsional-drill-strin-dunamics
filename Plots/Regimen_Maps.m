@@ -35,7 +35,7 @@ kk =1 ;
 for iii = 1:mmm
     for jjj = 1:nnn
             % Open files
-    namestring = strcat('WOB = ',num2str(vecWOB(iii), '%06.f'),'rpm = ',...
+    namestring = strcat('\WOB = ',num2str(vecWOB(iii)),'rpm = ',...
         num2str(vecrpm(jjj), '%03.f'),'.mat');
 
     arquivo = strcat(folder,namestring);
@@ -88,8 +88,9 @@ hold(axesEst,'on');
 % plot map
 C = Map_Regimen;
 surf(vecrpm,vecWOB2,Map_Regimen)
-colormap(map12);
-axis([min(vecrpm)  max(vecrpm) vecWOB2(end-1) vecWOB2(1) 0 5])
+% colormap(map12);
+xlim([min(vecrpm)  max(vecrpm)])
+ylim([vecWOB2(1) vecWOB2(end)])
 view(0,90)
 xlabel('$\Omega$ (rpm)','Interpreter','latex','FontSize',18)
 ylabel('$W_{ob}$ (kN)','Interpreter','latex','FontSize',18)

@@ -79,7 +79,7 @@ clc
 close all
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% GENERAL %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-Analysis = 1;   % Analysis = 1 -> single simulation
+Analysis = 3;   % Analysis = 1 -> single simulation
                 % Analysis = 2 -> regimen map simulation
 
 plot_modes  = [1 2];% index of the normal modes you want to plot
@@ -102,7 +102,7 @@ g      = 9.81;      % Acceleration of gravity
 Dbit   = 0.216;     % Bit diameter
 
 % Borehole wall properties
-ks  =  10e+8;       % Borehole wall stiffness
+ks  =  1e+9;       % Borehole wall stiffness
 cs  =  0;           % Borehole wall damping
 u   =  0.35;        % Wall friction coefficient
 
@@ -114,13 +114,22 @@ Lc  = [171.30 267.10 8.55 19.25];   % BHA section length
 Dco = [0.140 0.171 0.171 0.171];    % BHA collar outer diameter
 Dci = [0.076 0.071 0.071 0.071];    % BHA collar inner diameter
 
-% Setting the dofs
-N_tor        = 2;      % Number of DOFs for torsional dynamics
-LATERAL_dofs = [3 4];   % DOfs with lateral dynamics
+% Setting the dofs   
+N_tor        = 1;      % Number of DOFs for torsional dynamics
+LATERAL_dofs = [3];   % DOfs with lateral dynamics
 
 % Rayleigh damping coefficients
 a_c = 0.35;     % Damping constant proportional to inertia
 b_c = 0.06;     % Damping constant proportional to stiffness
+
+% Stochastic Parameters
+l_theta = pi/60; % Damping constant proportional to inertia
+l_z     = 0.25;  % Damping constant proportional to inertia
+z_lim   = 2.5;   % Damping constant proportional to inertia
+N_theta = 101;   % Damping constant proportional to inertia 
+N_z     = 101;   % Damping constant proportional to inertia
+mu_H     = 0;    % Damping constant proportional to inertia
+sigma_H  = 0.15; % Damping constant proportional to inertia
 
 %%%%%%%%%%%%%%%%%%%%%%%%% INTEGRATION PROPERTIES %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -128,19 +137,19 @@ b_c = 0.06;     % Damping constant proportional to stiffness
 ti = 0;
 
 % Final time
-tf = 50;
+tf = 200;
 
 % Maximum step/Saving step
-dt = 1e-2;
+dt = 1e-3;
 
 % Solver tolerance
 tolerance = 1e-4;%0.5e-3;
 
 % WOB and rpm range
-WOBrange   = 220:-10:190;       % in kN
-rpmrange   = 120:10:140;        % in rpm
-WOB        = 200;
-rpm        = 90;
+WOBrange   = 25:25:225;       % in kN 10
+rpmrange   = 40:10:140;        % in rpm 5
+WOB        = 135;
+rpm        = 105;
 
 % Map properties
 bha_region = 1;
@@ -166,14 +175,29 @@ addpath(strcat(pwd,'\Plots'));
 WOBrange = WOBrange*1000;
 WOB      = WOB*1000;
 
-if Analysis == 1
+% Stochastic field calculation
+if Analysis == 3
+    [z_grid, theta_grid, H_grid] = ...
+         Random_Field_Gen(N_theta, N_z, mu_H,sigma_H, l_theta,l_z, ...
+                          z_lim, Dbit/2);
+else
+    z_grid = 0;
+    theta_grid = 0;
+    H_grid = 1;
+end
+
+if ismember(Analysis, [1 3])
+    tic
     fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
               Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
-              WOB,local,LATERAL_dofs,N_tor,true);
+              WOB,local,LATERAL_dofs,N_tor,true,z_grid,theta_grid,H_grid);
     file = strcat(local,'\WOB =',num2str(round(WOB)),'rpm =',...
         num2str(rpm,'%03.f'));
     load(file)
-    
+    if ~exist(file, 'dir')
+       mkdir(file)
+    end
+    toc
     % Plot 1 - radial disp, torsional and whirl speeds vs time 
     figure(1)
     subplot(3,1,1)
@@ -190,14 +214,17 @@ if Analysis == 1
     plot(t,vtheta(bha_region,:))
     xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
     ylabel('$\dot{\theta}$ (rad/s)','Interpreter','latex','FontSize',16)
-    
+    saveas(gca,[file '\radial_disp_tors_whirl_speed'],'fig')
+
     % Plot 2 - Phase diagram
-    x = r(bha_region,t>20).*cos(theta(bha_region,t>20));
-    y = r(bha_region,t>20).*sin(theta(bha_region,t>20));   
+    t222 = 40;
+    x = r(bha_region,t>t222).*cos(theta(bha_region,t>t222));
+    y = r(bha_region,t>t222).*sin(theta(bha_region,t>t222));   
     figure(2)
     plot(x,y)
     xlabel('X','Interpreter','latex','FontSize',16)
     ylabel('Y','Interpreter','latex','FontSize',16)
+    saveas(gca,[file '\Phase_diagram'],'fig')
     
     % Plot 3 - Lateral natural frequency vs time
     i_dof = LATERAL_dofs(bha_region);
@@ -209,6 +236,7 @@ if Analysis == 1
     legend('WOB','TOB','No-load','Total')
     temp = k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2);
     disp('Lateral natural frequency'), disp(sqrt(temp(end)/Mt(i_dof))/2/pi)
+    saveas(gca,[file '\Lat_nat_freq_time'],'fig')
     
     % Plot 4 - Natural shapes
     [Eigen_vec,Eigen_val] = eig(kt,Im);
@@ -219,90 +247,107 @@ if Analysis == 1
                               num2str(Eigen_val(ii,ii)/2/pi,'%.2f') ' Hz'])
         ylabel('Distance from top (m)')
         ylabel('Normalized Magnitude')
+        saveas(gca,[file '\Mode_' num2str(ii)],'fig')
     end
         
     
     % Plot 5 - Spectrogram
     x = r(bha_region,:).*cos(theta(bha_region,:));
     y = r(bha_region,:).*sin(theta(bha_region,:));   
+    mw_spec = 128;
+    ocerlap = 120;
     figure(5)
-    spectrogram(x+y*sqrt(-1),128,120,128,1/(t(2)-t(1)),'centered','power','yaxis')
-    
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%% MODAL ANALYSIS %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Calculate nat frequencies, associated eigenvectors and normal modes
-    [V,w,MN] = FreqNat_Gen(kt,Im,NgdlTotDP,0,1);
-
-    L = sum([Lp Lc]);
-    if NgdlTotDP == 1
-        Coord = [0;LDP;L];
-        Coord_inv = L*ones(length(Coord),1) - Coord;
-    else
-        Coord = zeros(NgdlTotDP+2,1);
-        for i = 1:NgdlTotDP
-            Coord(i+1) = Coord(i) + LDPv(i);
-        end
-        Coord(end) = L;
-        Coord_inv = L*ones(length(Coord),1) - Coord;
-    end
-    
-    for i = 1:length(plot_modes)
-        figure(100+i)
-        if NgdlTotDP > 1
-            a = [ 0 ; MN(:,plot_modes(i)); MN(end,plot_modes(i))];
-            plot(a,Coord_inv,'ks--')
-            ylabel('Distance from bit (m)','FontSize',20)
-            xlabel('Amplitude','FontSize',20)
-            xlim([ -2.0 2.0] )
-            ylim([ 0 5500 ])
-            set(gca,'fontsize',14)
-            title([num2str(NgdlTotDP) ' dofs, '...
-                num2str(plot_modes(i)) '^o mode: '...
-                num2str(w(plot_modes(i))) ' Hz'],'FontSize',16)
-            legend([num2str(plot_modes(i)) '^o mode: '...
-                num2str(w(plot_modes(i)))...
-                ' Hz'],'Location','northwest')
-%             if i_save == 1 || i_save == 3
-%                 saveas(gca,['temp/Rigid_BHA_' num2str(NgdlDP)...
-%                     'DP_Modo' num2str(plot_modes(i))],'epsc')
-%                 saveas(gca,['temp/Rigid_BHA_' num2str(NgdlDP)...
-%                     'DP_Modo' num2str(plot_modes(i))],'fig')
-%                 saveas(gca,['temp/Rigid_BHA_' num2str(NgdlDP)...
-%                     'DP_Modo' num2str(plot_modes(i))],'jpg')
-%             end
-        else
-            a = [ 0 ; MN; MN];
-            plot(a,Coord_inv,'ks--')
-            ylabel('Distance from bit (m)','FontSize',20)
-            xlabel('Amplitude','FontSize',20)
-            xlim([ -2.0 2.0] )
-            ylim([ 0 5500 ])
-            set(gca,'fontsize',14)
-            title([num2str(NgdlTotDP)...
-                ' dofs, ' num2str(1) '^o mode: ' num2str(w) ' Hz'],...
-                'FontSize',16)
-            legend([num2str(plot_modes(i)) '^o mode: '...
-                num2str(w) ' Hz'],'Location','northwest')
-%             if i_save == 1 || i_save == 3
-%                 saveas(gca,'temp/KEeq_Rigido','epsc')
-%                 saveas(gca,'temp/KEeq_Rigido','fig')
-%                 saveas(gca,'temp/KEeq_Rigido','jpg')
-%             end
-        end
-    
-    end
-        
-        
-    
+    [~,f,t1,p] = spectrogram(x+y*sqrt(-1),round(mw_spec*1e-2/(t(2)-t(1))),...
+        round(ocerlap*1e-2/(t(2)-t(1))),round(mw_spec*1e-2/(t(2)-t(1))),...
+        1/(t(2)-t(1)),'centered','power','yaxis');
+    [fridge,~,lr] = tfridge(p,f);
+    h = pcolor(t1,f,10*log10(p));
+    set(h,'EdgeColor','none')
+    hCB = colorbar;
+    hCB.Title.String = 'Power (dB)';
+    ylim([-30 30])
+    hold on
+    plot3(t1,fridge,p(lr),'LineWidth',2)
+    hold off
+    xlabel('Time (s)')
+    ylabel('Frequency (Hz)')
+    saveas(gca,[file '\Spectrogram'],'fig')
     
 
-    %%
+    f1 = f > 0;
+    p1 = p(f1,:);
+    [fridge1,~,lr1] = tfridge(p1,f(f1));
+    
+    f2 = f < 0;
+    p2 = p(f2,:);
+    [fridge2,~,lr2] = tfridge(p2,f(f2));
+    
+    figure(51)
+    plot(t1,10*log10(p1(lr1)),'LineWidth',2)
+    
+    hold on
+    plot(t1,10*log10(p2(lr2)),'LineWidth',2)
+    legend('f>0','f<0')
+    xlabel('Time (s)')
+    ylabel('Power (dB)')
+    hold off
+    
+
+    saveas(gca,[file '\Spectrogram_2'],'fig')
+    
+    % Plot 6 - Bit-rock interaction
+    dphi_range = 0:0.1:30;
+    Tbit_range = fun_Tbit(dphi_range,WOBf);
+    
+    figure(6)
+    plot(dphi_range*180/pi,Tbit_range/1000)
+    xlabel('Bit Speed [RPM]')
+    ylabel('TOB [kN.m]')
+    saveas(gca,[file '\BitRock_interaction'],'fig')
+    
+    % Plot 7 - ROP
+    ROP = fun_ROP(vphi,WOBf);
+    
+    figure (7)
+    plot(t,ROP)
+    xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+    ylabel('$\dot{z}$ (m/s)','Interpreter','latex','FontSize',16)
+    saveas(gca,[file '\ROP'],'fig')
+    
+    
+    % Plot 8 - Axial displacement
+    figure (8)
+    plot(t,cumsum(ROP*dt)), hold on
+    plot(t,z,'--'), hold off
+    xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+    ylabel('$z$ (m)','Interpreter','latex','FontSize',16)
+    saveas(gca,[file '\Axial_Disp'],'fig')
+          
 elseif Analysis == 2
     for i = 1:length(rpmrange)
-        for j = 1:length(WOBrange)
+        parfor j = 1:length(WOBrange)
+            disp([num2str((i-1)*length(WOBrange)+j) ' / ' num2str(length(WOBrange)*length(rpmrange))])
+            tic
             fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
                 Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpmrange(i),...
-                WOBrange(j),local,LATERAL_dofs,N_tor,false);
+                WOBrange(j),local,LATERAL_dofs,N_tor,false,false);
+            toc
         end
     end
     Regimen_Maps(local,WOBrange,rpmrange,bha_region)
+
 end
+
+
+
+% figure
+% g = animatedline('color','b','marker','o');
+% axis(1e-3*[-25, 25, -25, 25])
+% nnn = 200;
+% lim = length(x)/nnn;
+% for ii = 48/dt:5:length(x)-nnn
+%     clearpoints(g)
+%     addpoints(g,x(ii:ii+nnn),y(ii:ii+nnn))
+%     drawnow update
+%     pause(0.05)
+% end

@@ -1,5 +1,5 @@
 function dydt = ode_4gdl(t,y,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB)
+                         kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid)
 % ode_4gdl  Drill-string system of equation. Calculates the time derivative
 %           of the state space for a torsional lumped parameter model of a
 %           drill-string.
@@ -43,6 +43,7 @@ H     = zeros(lp_number,1); % impact boolean
 Fn    = zeros(lp_number,1); % impact normal force
 Ft    = zeros(lp_number,1); % impact friction force
 Tlati = zeros(lp_number,1); % i-th section's impact torque
+dydt  = zeros(length(y),1); % State-space vector
 
 i = 2*length(Im)+1;
 for j = 1:lp_number
@@ -62,6 +63,22 @@ Tbit = fun_Tbit(y(2*length(Im)),WOB);
 
 i = 2*length(Im)+1;
 for j = 1:lp_number
+
+    % Stochastic field
+    if H_grid == 1
+        H_s = 1;
+    else
+        H_map = H_grid(:);
+        z_map = z_grid(:);
+        theta_map = theta_grid(:);
+
+        theta = rem(rem(y(i+2),2*pi) + 2*pi,2*pi);
+
+        aux0 = find(theta_map<=theta, 1, 'last' );
+
+        aux1 = find(z_map<=y(i));
+        H_s = H_map(max(aux1(aux1<=aux0)));
+    end
     
     % Impact normal force
     Fn(j)    = fun_Fr(y(i),y(i+1),cs,ks,H(j),tol(j)); 
@@ -78,6 +95,8 @@ end
 % Total impact torque
 Tlat         = sum(Tlati); 
 
+%%%%%%%%%%%%%%%%%%%% CALCULATE STATE SPACE DERIVATIVE %%%%%%%%%%%%%%%%%%%%%
+
 dydt(1:2*length(Im),1)  = torcional(t,y(1:length(Im)),...
     y(length(Im)+1:2*length(Im)),kt,ct,k1,c1,Omega,Tbit,Im,invIm,Tlat);
 
@@ -88,5 +107,8 @@ for j = 1:lp_number
         k(j),Mt(j),Lc(j),Tbit,e(j),ch(j),Ft(j),Fn(j));
     i = i + 4;
 end
+
+dydt(end,1) = fun_ROP(y(2*length(Im)),WOB);
+ 
 
 end

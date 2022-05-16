@@ -1,6 +1,6 @@
 function fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
                 Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,WOBf,...
-                local,LATERAL_dofs,N_tor,i_print)
+                local,LATERAL_dofs,N_tor,i_print,z_grid, theta_grid, H_grid)
 % fun_Model   Generates the analysis and simulation of a lateral-torsional
 %             lumped parameter model of a drill-string considering the
 %             axial force in stiffness matrices.  
@@ -34,7 +34,9 @@ function fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
 %   WOBf      -> Axial force at the bit
 %   local     -> Save folder
 %   LATERAL_dofs-> Indices from Lc considered in lat. dyn.
-%   N_tor      -> Number of torsional DOfs.           
+%   N_tor      -> Number of torsional DOfs.
+%   i_print   -> Chose wheter to print matriced or not.
+%   H_grid    -> Stochastic field (false if deterministic).
 %
 %  Outputs:
 %  analysis and simulation of a torsional lumped parameter model
@@ -78,7 +80,7 @@ for i = lLc:-1:1
     tol(i)     = (Dbwall -Dco(i))/2;        
     
     % Eccentricity
-    e(i)       = Dpo/10;                    
+    e(i)       = Dpo/7;                    
     
     if k(i) < 0
         % Buckling checkage
@@ -129,7 +131,7 @@ invIm = inv(Im);
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% Initial conditions %%%%%%%%%%%%%%%%%%%%%%%%%%
 LATERAL_dofs = sort(LATERAL_dofs);
-ci = zeros(4*length(LATERAL_dofs) + 2*length(Im),1);
+ci = zeros(4*length(LATERAL_dofs) + 2*length(Im) + 1,1);
 jj = 1;
 for i = LATERAL_dofs
     if m(i)*g*sin(alpha)/k(i) < tol(i)
@@ -149,11 +151,13 @@ tspan = [ti tf];            % Time information
 [X,t] = rkf45drillstring(e(LATERAL_dofs),u,ks,cs,R(LATERAL_dofs),...
     ch(LATERAL_dofs),k(LATERAL_dofs),tol(LATERAL_dofs),Lc(LATERAL_dofs),...
     Mt(LATERAL_dofs),aphi,Im,invIm,kt,ct,k1,c1,Omega,WOBf,ci,dt,...
-    tspan,tolerance);
+    tspan,tolerance,z_grid,theta_grid,H_grid);
 
 % Save values
 phi  = X(length(Im),:);
 vphi = X(length(Im)*2,:);
+z    = X(end,:);
+
 lumped_parameter = length(LATERAL_dofs);
 [lin,col] = size(phi);
 

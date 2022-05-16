@@ -23,34 +23,34 @@ function [ Map_Regimens,colour ]= Regimen(Whirl,StickSlip,Impact)
 Map_Regimens = zeros(m,n);
  for j=1:n
     for i=1:m
-        if Whirl(i,j) == 0 && StickSlip(i,j) == 0 && ...
-                Impact(i,j) == 1
+        if Whirl(i,j) == 0 && StickSlip(i,j) == 0 %&& ...
+                %Impact(i,j) == 1
         % Forward, no Stick-slip and no impact
         Map_Regimens(i,j) = 0;   
-        elseif Whirl(i,j) == 0 && StickSlip(i,j) == 1 && ...
-                Impact(i,j) == 1
+        elseif Whirl(i,j) == 0 && StickSlip(i,j) == 1 %&& ...
+              %  Impact(i,j) == 1
         % Forward, Stick-slip and no impact
         Map_Regimens(i,j) = 1;
-        elseif Whirl(i,j) == 1 && StickSlip(i,j) == 0 && ...
-                Impact(i,j) == 0
-        % Backward, no Stick-slip and contact
+        elseif Whirl(i,j) == 1 && StickSlip(i,j) == 0 %&& ...
+              %  Impact(i,j) == 0
+        % Backward, no Stick-slip and permanent contact
         Map_Regimens(i,j) = 2;
-        elseif Whirl(i,j) == 1 && StickSlip(i,j) == 1 && ...
-                Impact(i,j) == 2
+        elseif Whirl(i,j) == 1 && StickSlip(i,j) == 1 %&& ...
+             %   Impact(i,j) == 2
         % Backward, Stick-slip and impact
         Map_Regimens(i,j) = 3;
-        elseif Whirl(i,j) == 1 && StickSlip(i,j) == 0 && ...
-                Impact(i,j) == 1
-        % Backward, no Stick-slip and no contact
-        Map_Regimens(i,j) = 4;
-        elseif Whirl(i,j) == 1 && StickSlip(i,j) == 1 && ...
-                Impact(i,j) == 1
-        % Backward, no Stick-slip and no contact
-        Map_Regimens(i,j) = 4;
-        elseif Whirl(i,j) == 1 && StickSlip(i,j) == 1 && ...
-                Impact(i,j) == 0
-        % Backward, no Stick-slip and no contact
-        Map_Regimens(i,j) = 5;
+%         elseif Whirl(i,j) == 1 && StickSlip(i,j) == 0 && ...
+%                 Impact(i,j) == 1
+%         % Backward, no Stick-slip and no contact
+%         Map_Regimens(i,j) = 4;
+%         elseif Whirl(i,j) == 1 && StickSlip(i,j) == 1 && ...
+%                 Impact(i,j) == 1
+%         % Backward, Stick-slip and no contact
+%         Map_Regimens(i,j) = 5;
+%         elseif Whirl(i,j) == 1 && StickSlip(i,j) == 1 && ...
+%                 Impact(i,j) == 0
+%         % Backward, no Stick-slip and no contact
+%         Map_Regimens(i,j) = 6;
         end
     end
 end

@@ -30,7 +30,6 @@ function dxdt = lateral(phi,vphi,r,vr,teta,vteta,aphi,k,Mt,Lc,Tbit,e,ch,...
 %  LAST MODIFIED: 12/05/2020 BY LUCAS VOLPI, JORDAN BARBOZA AND DANIEL LOBO
 %  CREATED BY LAVI (COPPE-UFRJ) FOR PETROBRAS
 
-
 Vt = sqrt(vr^2+(r*vteta)^2);
 
 kl = (k-Tbit*pi^3/(2*Lc^2));   

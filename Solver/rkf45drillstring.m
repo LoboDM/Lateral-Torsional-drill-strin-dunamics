@@ -1,5 +1,6 @@
 function [X,tspan] = rkf45drillstring(e,u,ks,cs,R,ch,k,tol,Lc,Mt,...
-    aphi,Im,invIm,kt,ct,k1,c1,Omega,WOB,xi,dt,tspan,tolerance)
+    aphi,Im,invIm,kt,ct,k1,c1,Omega,WOB,xi,dt,tspan,tolerance,z_grid,...
+    theta_grid,H_grid)
 % rkf45drillstring  Runge-Kutta-Felbergh adaptative solver. It saves the
 %                   acceleration vector to use as input in the system's
 %                   nonlinear forces.
@@ -104,24 +105,24 @@ while tspan(i) <= tf
         
         aphi_aux = aphi;
         K1 = h*ode_4gdl(ti,xi,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB);
+                        kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid);
         aphi = K1(2*length(Im))/h;
         K2 = h*ode_4gdl(ti + ck21*h, xi + ck22*K1, e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB);
+                        kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid);
         aphi = K2(2*length(Im))/h;
         K3 = h*ode_4gdl(ti + ck31*h, xi + ck32*K1 + ck33*K2,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB);
+                        kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid);
         aphi = K3(2*length(Im))/h;
         K4 = h*ode_4gdl(ti + ck41*h, xi + ck42*K1 + ck43*K2 + ck44*K3,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB);
+                        kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid);
         aphi = K4(2*length(Im))/h;
         K5 = h*ode_4gdl(ti + ck51*h, xi + ck52*K1 + ck53*K2 + ck54*K3 + ...
             ck55*K4,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB);
+            kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid);
         aphi = K5(2*length(Im))/h;
         K6 = h*ode_4gdl(ti + ck61*h, xi + ck62*K1 + ck63*K2 + ck64*K3 + ...
             ck65*K4 - ck66*K5,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB);
+            kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid);
         aphi = K6(2*length(Im))/h;
         
         % Fourth Order Runge-Kutta
@@ -138,7 +139,7 @@ while tspan(i) <= tf
             % Approves the time step
             ok     = 1;
             K1 = h*ode_4gdl(ti,xi,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                                                     kt,ct,k1,c1,Omega,WOB);
+                           kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid);
             aphi = K1(2*length(Im))/h;
             
             ti     = ti + h;
