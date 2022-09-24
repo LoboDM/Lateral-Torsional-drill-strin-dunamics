@@ -123,13 +123,14 @@ a_c = 0.35;     % Damping constant proportional to inertia
 b_c = 0.06;     % Damping constant proportional to stiffness
 
 % Stochastic Parameters
-l_theta = pi/60; % Damping constant proportional to inertia
-l_z     = 0.25;  % Damping constant proportional to inertia
+N_sim   = 250;
+l_theta = pi/50;    % Damping constant proportional to inertia
+l_z     = 0.25;     % Damping constant proportional to inertia
 z_lim   = 2.5;   % Damping constant proportional to inertia
-N_theta = 101;   % Damping constant proportional to inertia 
-N_z     = 101;   % Damping constant proportional to inertia
-mu_H     = 0;    % Damping constant proportional to inertia
-sigma_H  = 0.15; % Damping constant proportional to inertia
+N_theta = 51;   % Damping constant proportional to inertia 
+N_z     = 51;   % Damping constant proportional to inertia
+mu_H     = 0.05;    % Damping constant proportional to inertia
+sigma_H  = 0.03; % Damping constant proportional to inertia
 
 %%%%%%%%%%%%%%%%%%%%%%%%% INTEGRATION PROPERTIES %%%%%%%%%%%%%%%%%%%%%%%%%%
 
@@ -148,8 +149,8 @@ tolerance = 1e-4;%0.5e-3;
 % WOB and rpm range
 WOBrange   = 25:25:225;       % in kN 10
 rpmrange   = 40:10:140;        % in rpm 5
-WOB        = 135;
-rpm        = 105;
+WOB        = 205;
+rpm        = 85;
 
 % Map properties
 bha_region = 1;
@@ -159,7 +160,9 @@ bha_region = 1;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
 % save directory
-local = [pwd '\Results'];
+% local = [pwd '\Results_stoch'];
+local = [pwd '\Results_stoch' '\WOB =',num2str(round(WOB)*1000),...
+    'rpm =',num2str(rpm,'%03.f')];
 if ~exist(local, 'dir')
        mkdir(local)
 end
@@ -170,159 +173,189 @@ Dbwall = Dbit;      % Borehole diameter is the same as bit
 addpath(strcat(pwd,'\Equations'));
 addpath(strcat(pwd,'\Solver'));
 addpath(strcat(pwd,'\Plots'));
+addpath(strcat(pwd,'\app_utils'));
 
 % Treats WOB info to N
 WOBrange = WOBrange*1000;
 WOB      = WOB*1000;
 
-% Stochastic field calculation
-if Analysis == 3
-    [z_grid, theta_grid, H_grid] = ...
-         Random_Field_Gen(N_theta, N_z, mu_H,sigma_H, l_theta,l_z, ...
-                          z_lim, Dbit/2);
-else
-    z_grid = 0;
-    theta_grid = 0;
-    H_grid = 1;
-end
-
 if ismember(Analysis, [1 3])
-    tic
-    fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
-              Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
-              WOB,local,LATERAL_dofs,N_tor,true,z_grid,theta_grid,H_grid);
-    file = strcat(local,'\WOB =',num2str(round(WOB)),'rpm =',...
-        num2str(rpm,'%03.f'));
-    load(file)
-    if ~exist(file, 'dir')
-       mkdir(file)
-    end
-    toc
-    % Plot 1 - radial disp, torsional and whirl speeds vs time 
-    figure(1)
-    subplot(3,1,1)
-    plot(t,r(bha_region,:))
-    xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
-    ylabel('$r$ (m)','Interpreter','latex','FontSize',16)
+    if N_sim > 1 && Analysis == 3
+        ppm = ParforProgressbar(N_sim, 'progressBarUpdatePeriod', 60);
+        parfor ii_sim = 1:N_sim
+            
+            % Stochastic field calculation
+            [z_grid, theta_grid, H_grid] = ...
+                 Random_Field_Gen(N_theta, N_z, mu_H,sigma_H, l_theta,l_z, ...
+                                  z_lim, Dbwall/2);
 
-    subplot(3,1,2)
-    plot(t,vphi)
-    xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
-    ylabel('$\dot{\phi}$ (rad/s)','Interpreter','latex','FontSize',16)
-    
-    subplot(3,1,3)
-    plot(t,vtheta(bha_region,:))
-    xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
-    ylabel('$\dot{\theta}$ (rad/s)','Interpreter','latex','FontSize',16)
-    saveas(gca,[file '\radial_disp_tors_whirl_speed'],'fig')
+            fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
+                      Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
+                      WOB,local,LATERAL_dofs,N_tor,false,z_grid,theta_grid,...
+                      H_grid,ii_sim);
 
-    % Plot 2 - Phase diagram
-    t222 = 40;
-    x = r(bha_region,t>t222).*cos(theta(bha_region,t>t222));
-    y = r(bha_region,t>t222).*sin(theta(bha_region,t>t222));   
-    figure(2)
-    plot(x,y)
-    xlabel('X','Interpreter','latex','FontSize',16)
-    ylabel('Y','Interpreter','latex','FontSize',16)
-    saveas(gca,[file '\Phase_diagram'],'fig')
-    
-    % Plot 3 - Lateral natural frequency vs time
-    i_dof = LATERAL_dofs(bha_region);
-    figure(3)
-    plot(t,(WOB(i_dof)*pi^2/(2*Lc(i_dof)))*ones(length(t),1)), hold on
-    plot(t,fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2))
-    plot(t,(pi^4)*E*I_area(i_dof)./(2*Lc(i_dof).^3)*ones(length(t),1))
-    plot(t,k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2)), hold off
-    legend('WOB','TOB','No-load','Total')
-    temp = k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2);
-    disp('Lateral natural frequency'), disp(sqrt(temp(end)/Mt(i_dof))/2/pi)
-    saveas(gca,[file '\Lat_nat_freq_time'],'fig')
-    
-    % Plot 4 - Natural shapes
-    [Eigen_vec,Eigen_val] = eig(kt,Im);
-    for ii = 1:length(Eigen_vec)
-        figure(100+ii)
-        plot([0; Eigen_vec(:,ii)]./max(Eigen_vec(:,ii)),-cumsum([0; LDPv]))
-        title(['Torsional Mode ' num2str(ii) ', Freq = ', ...
-                              num2str(Eigen_val(ii,ii)/2/pi,'%.2f') ' Hz'])
-        ylabel('Distance from top (m)')
-        ylabel('Normalized Magnitude')
-        saveas(gca,[file '\Mode_' num2str(ii)],'fig')
-    end
+            ppm.increment();
+        end
+        delete(ppm);
+    else
         
-    
-    % Plot 5 - Spectrogram
-    x = r(bha_region,:).*cos(theta(bha_region,:));
-    y = r(bha_region,:).*sin(theta(bha_region,:));   
-    mw_spec = 128;
-    ocerlap = 120;
-    figure(5)
-    [~,f,t1,p] = spectrogram(x+y*sqrt(-1),round(mw_spec*1e-2/(t(2)-t(1))),...
-        round(ocerlap*1e-2/(t(2)-t(1))),round(mw_spec*1e-2/(t(2)-t(1))),...
-        1/(t(2)-t(1)),'centered','power','yaxis');
-    [fridge,~,lr] = tfridge(p,f);
-    h = pcolor(t1,f,10*log10(p));
-    set(h,'EdgeColor','none')
-    hCB = colorbar;
-    hCB.Title.String = 'Power (dB)';
-    ylim([-30 30])
-    hold on
-    plot3(t1,fridge,p(lr),'LineWidth',2)
-    hold off
-    xlabel('Time (s)')
-    ylabel('Frequency (Hz)')
-    saveas(gca,[file '\Spectrogram'],'fig')
-    
+        % Stochastic field calculation
+        if Analysis == 3
+            [z_grid, theta_grid, H_grid] = ...
+                 Random_Field_Gen(N_theta, N_z, mu_H,sigma_H, l_theta,l_z, ...
+                                  z_lim, Dbwall/2);
+        else
+            z_grid = 0;
+            theta_grid = 0;
+            H_grid = 0;
+        end
+        
+        tic
+        fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
+                  Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
+                  WOB,local,LATERAL_dofs,N_tor,true,z_grid,theta_grid,...
+                  H_grid);
+        toc
+        file = strcat(local,'\WOB =',num2str(round(WOB)),'rpm =',...
+            num2str(rpm,'%03.f'));
+        load(file)
+        if ~exist(file, 'dir')
+           mkdir(file)
+        end
 
-    f1 = f > 0;
-    p1 = p(f1,:);
-    [fridge1,~,lr1] = tfridge(p1,f(f1));
-    
-    f2 = f < 0;
-    p2 = p(f2,:);
-    [fridge2,~,lr2] = tfridge(p2,f(f2));
-    
-    figure(51)
-    plot(t1,10*log10(p1(lr1)),'LineWidth',2)
-    
-    hold on
-    plot(t1,10*log10(p2(lr2)),'LineWidth',2)
-    legend('f>0','f<0')
-    xlabel('Time (s)')
-    ylabel('Power (dB)')
-    hold off
-    
+        % Plot 1 - radial disp, torsional and whirl speeds vs time 
+        figure(1)
+        subplot(3,1,1)
+        plot(t,r(bha_region,:))
+        xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+        ylabel('$r$ (m)','Interpreter','latex','FontSize',16)
 
-    saveas(gca,[file '\Spectrogram_2'],'fig')
+        subplot(3,1,2)
+        plot(t,vphi)
+        xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+        ylabel('$\dot{\phi}$ (rad/s)','Interpreter','latex','FontSize',16)
+
+        subplot(3,1,3)
+        plot(t,vtheta(bha_region,:))
+        xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+        ylabel('$\dot{\theta}$ (rad/s)','Interpreter','latex','FontSize',16)
+        saveas(gca,[file '\radial_disp_tors_whirl_speed'],'fig')
+
+        % Plot 2 - Phase diagram
+        t222 = 40;
+        x = r(bha_region,t>t222).*cos(theta(bha_region,t>t222));
+        y = r(bha_region,t>t222).*sin(theta(bha_region,t>t222));   
+        figure(2)
+        plot(x,y)
+        xlabel('X','Interpreter','latex','FontSize',16)
+        ylabel('Y','Interpreter','latex','FontSize',16)
+        saveas(gca,[file '\Phase_diagram'],'fig')
+
+        % Plot 3 - Lateral natural frequency vs time
+        i_dof = LATERAL_dofs(bha_region);
+        figure(3)
+        plot(t,(WOB(i_dof)*pi^2/(2*Lc(i_dof)))*ones(length(t),1)), hold on
+        plot(t,fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2))
+        plot(t,(pi^4)*E*I_area(i_dof)./(2*Lc(i_dof).^3)*ones(length(t),1))
+        plot(t,k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2)), hold off
+        legend('WOB','TOB','No-load','Total')
+        temp = k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2);
+        disp('Lateral natural frequency'), disp(sqrt(temp(end)/Mt(i_dof))/2/pi)
+        saveas(gca,[file '\Lat_nat_freq_time'],'fig')
+
+        % Plot 4 - Natural shapes
+        [Eigen_vec,Eigen_val] = eig(kt,Im);
+        for ii = 1:length(Eigen_vec)
+            figure(100+ii)
+            plot([0; Eigen_vec(:,ii)]./max(Eigen_vec(:,ii)),-cumsum([0; LDPv]))
+            title(['Torsional Mode ' num2str(ii) ', Freq = ', ...
+                                  num2str(Eigen_val(ii,ii)/2/pi,'%.2f') ' Hz'])
+            ylabel('Distance from top (m)')
+            ylabel('Normalized Magnitude')
+            saveas(gca,[file '\Mode_' num2str(ii)],'fig')
+        end
+
+
+        % Plot 5 - Spectrogram
+        x = r(bha_region,:).*cos(theta(bha_region,:));
+        y = r(bha_region,:).*sin(theta(bha_region,:));   
+        mw_spec = 128;
+        ocerlap = 120;
+        figure(5)
+        [~,f,t1,p] = spectrogram(x+y*sqrt(-1),round(mw_spec*1e-2/(t(2)-t(1))),...
+            round(ocerlap*1e-2/(t(2)-t(1))),round(mw_spec*1e-2/(t(2)-t(1))),...
+            1/(t(2)-t(1)),'centered','power','yaxis');
+        [fridge,~,lr] = tfridge(p,f);
+        h = pcolor(t1,f,10*log10(p));
+        set(h,'EdgeColor','none')
+        hCB = colorbar;
+        hCB.Title.String = 'Power (dB)';
+        ylim([-30 30])
+        hold on
+        plot3(t1,fridge,p(lr),'LineWidth',2)
+        hold off
+        xlabel('Time (s)')
+        ylabel('Frequency (Hz)')
+        saveas(gca,[file '\Spectrogram'],'fig')
+
+
+        f1 = f > 0;
+        p1 = p(f1,:);
+        [fridge1,~,lr1] = tfridge(p1,f(f1));
+
+        f2 = f < 0;
+        p2 = p(f2,:);
+        [fridge2,~,lr2] = tfridge(p2,f(f2));
+
+        figure(51)
+        plot(t1,10*log10(p1(lr1)),'LineWidth',2)
+
+        hold on
+        plot(t1,10*log10(p2(lr2)),'LineWidth',2)
+        legend('f>0','f<0')
+        xlabel('Time (s)')
+        ylabel('Power (dB)')
+        hold off
+
+
+        saveas(gca,[file '\Spectrogram_2'],'fig')
+
+        % Plot 6 - Bit-rock interaction
+        dphi_range = 0:0.1:30;
+        Tbit_range = fun_Tbit(dphi_range,WOBf);
+
+        figure(6)
+        plot(dphi_range*180/pi,Tbit_range/1000)
+        xlabel('Bit Speed [RPM]')
+        ylabel('TOB [kN.m]')
+        saveas(gca,[file '\BitRock_interaction'],'fig')
+
+        % Plot 7 - ROP
+        ROP = fun_ROP(vphi,WOBf);
+
+        figure (7)
+        plot(t,ROP)
+        xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+        ylabel('$\dot{z}$ (m/s)','Interpreter','latex','FontSize',16)
+        saveas(gca,[file '\ROP'],'fig')
+
+
+        % Plot 8 - Axial displacement
+        figure (8)
+        plot(t,cumsum(ROP*dt)), hold on
+        plot(t,z,'--'), hold off
+        xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+        ylabel('$z$ (m)','Interpreter','latex','FontSize',16)
+        saveas(gca,[file '\Axial_Disp'],'fig')
+        
+        % Plot 9 - Well radius
+        H_s = Hs_extract(H_grid,z_grid,theta_grid,theta,z);
+        figure (9)
+        plot(t,(1+H_s)*Dbwall)
+        xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+        ylabel('$D_{wall}$','Interpreter','latex','FontSize',16)
+    end     
     
-    % Plot 6 - Bit-rock interaction
-    dphi_range = 0:0.1:30;
-    Tbit_range = fun_Tbit(dphi_range,WOBf);
-    
-    figure(6)
-    plot(dphi_range*180/pi,Tbit_range/1000)
-    xlabel('Bit Speed [RPM]')
-    ylabel('TOB [kN.m]')
-    saveas(gca,[file '\BitRock_interaction'],'fig')
-    
-    % Plot 7 - ROP
-    ROP = fun_ROP(vphi,WOBf);
-    
-    figure (7)
-    plot(t,ROP)
-    xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
-    ylabel('$\dot{z}$ (m/s)','Interpreter','latex','FontSize',16)
-    saveas(gca,[file '\ROP'],'fig')
-    
-    
-    % Plot 8 - Axial displacement
-    figure (8)
-    plot(t,cumsum(ROP*dt)), hold on
-    plot(t,z,'--'), hold off
-    xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
-    ylabel('$z$ (m)','Interpreter','latex','FontSize',16)
-    saveas(gca,[file '\Axial_Disp'],'fig')
-          
 elseif Analysis == 2
     for i = 1:length(rpmrange)
         parfor j = 1:length(WOBrange)
@@ -330,7 +363,8 @@ elseif Analysis == 2
             tic
             fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
                 Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpmrange(i),...
-                WOBrange(j),local,LATERAL_dofs,N_tor,false,false);
+                WOBrange(j),local,LATERAL_dofs,N_tor,false,z_grid,...
+                theta_grid,H_grid);
             toc
         end
     end
@@ -338,14 +372,15 @@ elseif Analysis == 2
 
 end
 
-
-
+% t222 = 0;
+% x = r(bha_region,t>t222).*cos(theta(bha_region,t>t222));
+% y = r(bha_region,t>t222).*sin(theta(bha_region,t>t222));  
 % figure
 % g = animatedline('color','b','marker','o');
 % axis(1e-3*[-25, 25, -25, 25])
 % nnn = 200;
 % lim = length(x)/nnn;
-% for ii = 48/dt:5:length(x)-nnn
+% for ii = 180/dt:5:length(x)-nnn
 %     clearpoints(g)
 %     addpoints(g,x(ii:ii+nnn),y(ii:ii+nnn))
 %     drawnow update

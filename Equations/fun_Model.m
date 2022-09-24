@@ -1,6 +1,7 @@
 function fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
                 Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,WOBf,...
-                local,LATERAL_dofs,N_tor,i_print,z_grid, theta_grid, H_grid)
+                local,LATERAL_dofs,N_tor,i_print,z_grid, theta_grid,...
+                H_grid, ii_sim)
 % fun_Model   Generates the analysis and simulation of a lateral-torsional
 %             lumped parameter model of a drill-string considering the
 %             axial force in stiffness matrices.  
@@ -37,6 +38,7 @@ function fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
 %   N_tor      -> Number of torsional DOfs.
 %   i_print   -> Chose wheter to print matriced or not.
 %   H_grid    -> Stochastic field (false if deterministic).
+%   ii_sim    -> stochastic simulation identier
 %
 %  Outputs:
 %  analysis and simulation of a torsional lumped parameter model
@@ -151,7 +153,7 @@ tspan = [ti tf];            % Time information
 [X,t] = rkf45drillstring(e(LATERAL_dofs),u,ks,cs,R(LATERAL_dofs),...
     ch(LATERAL_dofs),k(LATERAL_dofs),tol(LATERAL_dofs),Lc(LATERAL_dofs),...
     Mt(LATERAL_dofs),aphi,Im,invIm,kt,ct,k1,c1,Omega,WOBf,ci,dt,...
-    tspan,tolerance,z_grid,theta_grid,H_grid);
+    tspan,tolerance,z_grid,theta_grid,H_grid,Dbwall);
 
 % Save values
 phi  = X(length(Im),:);
@@ -175,8 +177,14 @@ for i = 1:lumped_parameter
     j = j + 4;
 end
 
+if nargin < 34
+    ii_sim_str = "";
+else
+    ii_sim_str = strcat("_", num2str(ii_sim));
+end
+
 nome = strcat(local,'\WOB =',num2str(round(WOBf)),'rpm =',num2str(rpm,...
-    '%03.f'));
+    '%03.f'),ii_sim_str);
 
 save(nome);
 

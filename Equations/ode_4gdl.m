@@ -1,5 +1,5 @@
 function dydt = ode_4gdl(t,y,e,u,ks,cs,R,ch,k,tol,Lc,Mt,aphi,Im,invIm,...
-                         kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid)
+                     kt,ct,k1,c1,Omega,WOB,z_grid,theta_grid,H_grid,Dbwall)
 % ode_4gdl  Drill-string system of equation. Calculates the time derivative
 %           of the state space for a torsional lumped parameter model of a
 %           drill-string.
@@ -45,17 +45,6 @@ Ft    = zeros(lp_number,1); % impact friction force
 Tlati = zeros(lp_number,1); % i-th section's impact torque
 dydt  = zeros(length(y),1); % State-space vector
 
-i = 2*length(Im)+1;
-for j = 1:lp_number
-    if y(i) > tol(j)
-        H(j) = 1;
-    else
-        H(j)=0;
-    end
-
-    i = i + 4;
-end
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%% CALCULATE FORCES %%%%%%%%%%%%%%%%%%%%%%%%%%%% 
 
 % Torque on bit
@@ -65,22 +54,17 @@ i = 2*length(Im)+1;
 for j = 1:lp_number
 
     % Stochastic field
-    if H_grid == 1
-        H_s = 1;
+    H_s = Hs_extract(H_grid,z_grid,theta_grid,y(i+2),y(end));
+    tol(j) = tol(j) + H_s*Dbwall/2;
+    
+    %Check Impact
+    if y(i) > tol(j)
+        H(j) = 1;
     else
-        H_map = H_grid(:);
-        z_map = z_grid(:);
-        theta_map = theta_grid(:);
-
-        theta = rem(rem(y(i+2),2*pi) + 2*pi,2*pi);
-
-        aux0 = find(theta_map<=theta, 1, 'last' );
-
-        aux1 = find(z_map<=y(i));
-        H_s = H_map(max(aux1(aux1<=aux0)));
+        H(j)=0;
     end
     
-    % Impact normal force
+        % Impact normal force
     Fn(j)    = fun_Fr(y(i),y(i+1),cs,ks,H(j),tol(j)); 
     
     % Impact friction
