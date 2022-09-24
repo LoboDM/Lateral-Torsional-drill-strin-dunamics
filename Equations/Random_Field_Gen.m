@@ -10,10 +10,12 @@ function [z_grid, theta_grid, H_grid] = ...
 %   Inputs:
 %   N_theta   -> Number of nodes in theta-direction
 %   N_z       -> Number of nodes in z-direction
+%   mu_H      -> Mean of stochastic field H
 %   sigma_H   -> Standard deviation of stochastic field H
 %   l_theta   -> Lenght of correlation in rad
 %   l_z       -> Lenght of correlation in z-direction in m
 %   z_lim     -> Upper limit of penetration in theta-direction in m
+%   R_well    -> Well radius
 %
 %   Outputs:
 %   H_grid   -> Random field realization at specified nodes
@@ -43,7 +45,7 @@ for ii = 1:N_theta*N_z
         
     end
 end
-Cov = Sigma_h^2*eye(N_theta*N_z);
+% Cov = Sigma_h^2*eye(N_theta*N_z);
 Coeff = 1e-12;
 
 Cov = Cov + eye(N_theta*N_z)*Coeff;
