@@ -1,7 +1,7 @@
 clear all
 
 % INPUT
-N_sim      = 85;   % Number of simulations
+N_sim      = 250;   % Number of simulations
 WOB_plot   = 205;   % WOB simulated
 rpm_plot   = 85;   % RPM simulated
 bha_region = 1;     % region in BHA to assess
@@ -14,8 +14,8 @@ ocerlap = 120;  % Overlap of windows in spectrogram
 addpath(strcat(pwd,'\app_utils'));
 
 % Files (input and output)
-local = [pwd '\Results_stoch' '\WOB =',num2str(round(WOB_plot)*1000),...
-    'rpm =',num2str(rpm_plot,'%03.f')];
+local = strcat(pwd, '\Results_stoch', '\WOB =',num2str(round(WOB_plot)*1000),...
+    'rpm =',num2str(rpm_plot,'%03.f'));
 output_file = strcat(local,'\WOB =',num2str(round(WOB_plot)*1000),...
     'rpm =',num2str(rpm_plot,'%03.f'),"_stochplot");
 
@@ -73,11 +73,18 @@ parfor ii_sim2 = 1:N_sim
     f_list2(:,ii_sim2) = fridge2;
     p1_list(:,ii_sim2) = 10*log10(p1(lr1));
     p2_list(:,ii_sim2) = 10*log10(p2(lr2));
+    vphi_list(:,ii_sim2) = file_values.vphi;
     ppm.increment();
 end
 delete(ppm);
 save(output_file);
 %%
+local = strcat(pwd, '\Results_stoch', '\WOB =',num2str(round(WOB_plot)*1000),...
+    'rpm =',num2str(rpm_plot,'%03.f'));
+output_file = strcat(local,'\WOB =',num2str(round(WOB_plot)*1000),...
+    'rpm =',num2str(rpm_plot,'%03.f'),"_stochplot");
+load(output_file)
+
 figure(1)
 plot(t1,p1_list)
 title('f>0')
@@ -96,6 +103,20 @@ title('Dominant frequency')
 xlabel('Time (s)')
 ylabel('Frequency (Hz)')
 
+figure(31)
+plot(t1,quantile(f_list',0.05)), hold on
+plot(t1,mean(f_list'))
+plot(t1,quantile(f_list',0.95)), hold off
+title('Dominant frequency')
+xlabel('Time (s)')
+ylabel('Frequency (Hz)')
+%%
+figure(32)
+plot(file_values.t,vphi_list*60/2/pi)
+xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
+ylabel('$\dot{\phi}$ (rpm)','Interpreter','latex','FontSize',16)
+
+%%
 figure(4)
 plot(t1,f_list1)
 title('Dominant positive frequency')
@@ -108,15 +129,34 @@ title('Dominant negative frequency')
 xlabel('Time (s)')
 ylabel('Frequency (Hz)')
 
+figure(6)
+p_ratio = log10((10.^(p1_list))./(10.^p2_list));
+plot(t1,p_ratio)
+title('Magnitude ratio')
+xlabel('Time (s)')
+ylabel('f>0/f<0 - 1')
+
+figure(7)
+f_ratio = abs(f_list1)./abs(f_list2);
+plot(t1,f_ratio)
+title('Frequency ratio')
+xlabel('Time (s)')
+ylabel('f>0/f<0')
+
 %% Plots a specific realization ii_sim2
 
 % INPUT
 ii_sim2 = 11; % Realization to be plotted
 
 % OUTPUT
+local = strcat(pwd, '\Results_stoch', '\WOB =',num2str(round(WOB_plot)*1000),...
+    'rpm =',num2str(rpm_plot,'%03.f'));
 input_file = strcat(local,'\WOB =',num2str(round(WOB_plot)*1000),'rpm =',...
         num2str(rpm_plot,'%03.f'),"_",num2str(ii_sim2));
 load(input_file);
+if ~exist(input_file, 'dir')
+   mkdir(input_file)
+end
 
 addpath(strcat(pwd,'\Equations'));
 addpath(strcat(pwd,'\Solver'));
@@ -130,15 +170,15 @@ xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
 ylabel('$r$ (m)','Interpreter','latex','FontSize',16)
 
 subplot(3,1,2)
-plot(t,vphi)
+plot(t,vphi*60/2/pi)
 xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
-ylabel('$\dot{\phi}$ (rad/s)','Interpreter','latex','FontSize',16)
+ylabel('$\dot{\phi}$ (rpm)','Interpreter','latex','FontSize',16)
 
 subplot(3,1,3)
 plot(t,vtheta(bha_region,:))
 xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
 ylabel('$\dot{\theta}$ (rad/s)','Interpreter','latex','FontSize',16)
-
+saveas(gca,strcat(input_file, '\radial_disp_tors_whirl_speed'),'fig')
 
 % Plot 2 - Phase diagram
 t222 = 40;
@@ -148,7 +188,7 @@ figure(102)
 plot(x,y)
 xlabel('X','Interpreter','latex','FontSize',16)
 ylabel('Y','Interpreter','latex','FontSize',16)
-
+saveas(gca,strcat(input_file, '\Phase_diagram'),'fig')
 
 % Plot 3 - Lateral natural frequency vs time
 i_dof = LATERAL_dofs(bha_region);
@@ -160,6 +200,7 @@ plot(t,k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2)), hold off
 legend('WOB','TOB','No-load','Total')
 temp = k(3) - fun_Tbit(vphi,WOBf)*pi^3/(2*Lc(i_dof)^2);
 disp('Lateral natural frequency'), disp(sqrt(temp(end)/Mt(i_dof))/2/pi)
+saveas(gca,strcat(input_file, '\Lat_nat_freq_time'),'fig')
 
 % Plot 5 - Spectrogram
 x = r(bha_region,:).*cos(theta(bha_region,:));
@@ -181,7 +222,7 @@ plot3(t1,fridge,p(lr),'LineWidth',2)
 hold off
 xlabel('Time (s)')
 ylabel('Frequency (Hz)')
-
+saveas(gca,strcat(input_file, '\Spectrogram'),'fig')
 
 f1 = f > 0;
 p1 = p(f1,:);
@@ -200,6 +241,18 @@ legend('f>0','f<0')
 xlabel('Time (s)')
 ylabel('Power (dB)')
 hold off
+saveas(gca,strcat(input_file, '\Spectrogram_2'),'fig')
+
+figure(52)
+plot(t1,fridge1,'LineWidth',2)
+
+hold on
+plot(t1,fridge2,'LineWidth',2)
+legend('f>0','f<0')
+xlabel('Time (s)')
+ylabel('Power (dB)')
+hold off
+saveas(gca,strcat(input_file, '\Spectrogram_3'),'fig')
 
 % Plot 6 - Bit-rock interaction
 dphi_range = 0:0.1:30;
@@ -209,6 +262,7 @@ figure(106)
 plot(dphi_range*180/pi,Tbit_range/1000)
 xlabel('Bit Speed [RPM]')
 ylabel('TOB [kN.m]')
+saveas(gca,strcat(input_file, '\BitRock_interaction'),'fig')
 
 % Plot 7 - ROP
 ROP = fun_ROP(vphi,WOBf);
@@ -217,7 +271,7 @@ figure (107)
 plot(t,ROP)
 xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
 ylabel('$\dot{z}$ (m/s)','Interpreter','latex','FontSize',16)
-
+saveas(gca,strcat(input_file, '\ROP'),'fig')
 
 % Plot 8 - Axial displacement
 figure (108)
@@ -225,14 +279,17 @@ plot(t,cumsum(ROP*dt)), hold on
 plot(t,z,'--'), hold off
 xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
 ylabel('$z$ (m)','Interpreter','latex','FontSize',16)
+saveas(gca,strcat(input_file, '\Axial_Disp'),'fig')
 
+% Plot 9 - Well radius
 H_s = Hs_extract(H_grid,z_grid,theta_grid,theta,z);
 figure (109)
 plot(t,(1+H_s)*Dbwall/2)
 xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
 ylabel('$R_{wall}$','Interpreter','latex','FontSize',16)
+saveas(gca,strcat(input_file, '\Well_Radius'),'fig')
 %%
-t222 = 110;
+t222 = 100;
 x = r(bha_region,t>t222).*cos(theta(bha_region,t>t222));
 y = r(bha_region,t>t222).*sin(theta(bha_region,t>t222));
 t_d = t(t>t222);
@@ -263,7 +320,7 @@ yticks(-0.05:0.025:0.05)
 xlabel('X (m)')
 ylabel('Y (m)')
 grid on
-nnn = 200;
+nnn = 50;
 lim = length(x)/nnn;
 
 for ii = 1:5:length(x)-nnn
@@ -281,5 +338,5 @@ for ii = 1:5:length(x)-nnn
     
     
     drawnow update
-    pause(0.01)
+    pause(0.03)
 end

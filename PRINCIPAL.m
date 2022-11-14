@@ -188,7 +188,7 @@ if ismember(Analysis, [1 3])
             [z_grid, theta_grid, H_grid] = ...
                  Random_Field_Gen(N_theta, N_z, mu_H,sigma_H, l_theta,l_z, ...
                                   z_lim, Dbwall/2);
-
+                              
             fun_Model(ti,tf,dt,tolerance,rho,rho_f,Dco,Dci,Ca,Dpo,Dpi,...
                       Dbwall,Lp,E,G,Cd,g,u,ks,cs,alpha,a_c,b_c,Lc,rpm,...
                       WOB,local,LATERAL_dofs,N_tor,false,z_grid,theta_grid,...
@@ -354,6 +354,7 @@ if ismember(Analysis, [1 3])
         plot(t,(1+H_s)*Dbwall)
         xlabel('$t$ (s)','Interpreter','latex','FontSize',16)
         ylabel('$D_{wall}$','Interpreter','latex','FontSize',16)
+        saveas(gca,[file '\Well_Radius'],'fig')
     end     
     
 elseif Analysis == 2

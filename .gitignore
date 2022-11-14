@@ -2,4 +2,7 @@
 *.asv
 Results/
 *.mat
+*.png
+*.fig
 Results Det/
+Results_stoch/
